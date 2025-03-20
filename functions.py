@@ -15,14 +15,6 @@ from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 from textblob import TextBlob
 import nltk
-import os
-
-# Manually set NLTK data path
-nltk.data.path.append(r"C:\Users\asus\AppData\Roaming\nltk_data")
-
-# Verify if punkt is found
-print(nltk.data.find('tokenizers/punkt'))  # This should print the correct path
-import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 
