@@ -15,6 +15,14 @@ from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import StandardScaler
 from textblob import TextBlob
 import nltk
+import os
+
+# Manually set NLTK data path
+nltk.data.path.append(r"C:\Users\asus\AppData\Roaming\nltk_data")
+
+# Verify if punkt is found
+print(nltk.data.find('tokenizers/punkt'))  # This should print the correct path
+import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 
@@ -273,7 +281,7 @@ def activity_heatmap(df):
 
 
 def create_wordcloud(df):
-    """Create and return wordcloud from messages"""
+
     stop_words_list = set(stopwords.words('english'))
     
     try:
@@ -281,7 +289,7 @@ def create_wordcloud(df):
         custom_stop_words = f.read()
         f.close()
         
-        # Combine both stopword lists
+       
         for word in custom_stop_words.split():
             stop_words_list.add(word.lower())
     except:
@@ -302,17 +310,14 @@ def create_wordcloud(df):
 
 
 def sentiment_analysis(df):
-    """Perform sentiment analysis on messages"""
-    # Function to get sentiment score using TextBlob
+
     def get_sentiment(text):
         analysis = TextBlob(text)
-        # Return polarity score: -1 to 1 (negative to positive)
+        
         return analysis.sentiment.polarity
-    
-    # Apply sentiment analysis to each message
+
     df['sentiment_score'] = df['Message'].apply(get_sentiment)
-    
-    # Categorize sentiment into positive, neutral, or negative
+
     def categorize_sentiment(score):
         if score > 0.1:
             return 'Positive'
@@ -323,13 +328,10 @@ def sentiment_analysis(df):
     
     df['sentiment'] = df['sentiment_score'].apply(categorize_sentiment)
     
-    # Group by user and calculate average sentiment
     user_sentiment = df.groupby('User')['sentiment_score'].mean().sort_values(ascending=False)
-    
-    # Count occurrences of each sentiment category overall
+ 
     sentiment_counts = df['sentiment'].value_counts()
-    
-    # Sentiment over time
+
     sentiment_over_time = df.groupby(['Date'])['sentiment_score'].mean().reset_index()
     sentiment_over_time['Rolling_Avg'] = sentiment_over_time['sentiment_score'].rolling(window=7).mean()
     
@@ -337,48 +339,38 @@ def sentiment_analysis(df):
 
 
 def topic_modeling(df, num_topics=5):
-    """Perform topic modeling on messages"""
-    # Combine all messages by user
     user_messages = df.groupby('User')['Message'].apply(' '.join).reset_index()
-    
-    # Create a document-term matrix
     vectorizer = CountVectorizer(
         stop_words='english', 
-        min_df=2,  # Ignore terms that appear in less than 2 documents
-        max_df=0.9  # Ignore terms that appear in more than 90% of documents
+        min_df=2,  
+        max_df=0.9 
     )
     
-    # If less than 5 users, adjust to the number of users
     if len(user_messages) < num_topics:
         num_topics = max(2, len(user_messages) - 1)
     
     try:
         dtm = vectorizer.fit_transform(user_messages['Message'])
         feature_names = vectorizer.get_feature_names_out()
-        
-        # Apply LDA
+
         lda_model = LatentDirichletAllocation(
             n_components=num_topics,
             random_state=42,
             max_iter=20
         )
-        
         lda_output = lda_model.fit_transform(dtm)
-        
-        # Get the top words for each topic
+
         topic_words = {}
         for topic_idx, topic in enumerate(lda_model.components_):
-            top_words_idx = topic.argsort()[:-11:-1]  # Get indices of top 10 words
+            top_words_idx = topic.argsort()[:-11:-1]  
             top_words = [feature_names[i] for i in top_words_idx]
             topic_words[f"Topic {topic_idx+1}"] = top_words
-        
-        # Get dominant topic for each user
+
         user_messages['Dominant_Topic'] = lda_output.argmax(axis=1) + 1
         user_topic_df = pd.concat([user_messages['User'], 
                                   pd.DataFrame(lda_output, 
                                              columns=[f'Topic_{i+1}' for i in range(num_topics)])], 
                                  axis=1)
-        
         return topic_words, user_topic_df
     except:
         return None, None
@@ -736,15 +728,7 @@ def calculate_message_intensity(df):
 
 
 def calculate_long_term_trends(df):
-    """
-    Calculate long-term message trends including daily counts and rolling averages.
-    
-    Parameters:
-    df (pandas.DataFrame): Preprocessed chat dataframe
-    
-    Returns:
-    pandas.DataFrame: DataFrame with date, message_count, and rolling averages
-    """
+  
     import pandas as pd
     
     # Create a copy to avoid modifying the original
