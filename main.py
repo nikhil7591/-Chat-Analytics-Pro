@@ -7,10 +7,13 @@ import seaborn as sns
 import time
 import functions
 import ml_models
+import theme_manager 
 import plotly.express as px
 import plotly.graph_objects as go
 from PIL import Image
-
+from fpdf import FPDF
+import io
+import pdf_exporter
 # Set page config
 st.set_page_config(
     page_title="Chat Analyzer",
@@ -18,7 +21,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-
+theme_manager.apply_theme()
 # Custom CSS
 st.markdown("""
 <style>
@@ -73,7 +76,7 @@ st.markdown('#### Analyze your WhatsApp chats with ML features')
 with st.sidebar:
     st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/1200px-WhatsApp.svg.png", width=100)
     st.title("Settings")
-    
+    theme_manager.theme_selector()
     # File uploader
     file = st.file_uploader("Upload WhatsApp Chat (.txt)", type=['txt'])
     
@@ -149,6 +152,61 @@ if file:
             with tabs[0]:
                 st.header(f"{title_name} Chat Overview")
                 
+                # hvhjkljhgcfxd
+                st.markdown("## 📥 Download Chat Analysis Report")
+
+                # 📄 CSV Export
+                csv = df.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📄 Download CSV",
+                    data=csv,
+                    file_name='chat_report.csv',
+                    mime='text/csv',
+                    key='csv-download'
+                )
+
+                # 📊 Excel Export
+                excel_buffer = io.BytesIO()
+                with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+                    df.to_excel(writer, sheet_name='Report', index=False)
+                st.download_button(
+                    label="📊 Download Excel",
+                    data=excel_buffer.getvalue(),
+                    file_name='chat_report.xlsx',
+                    mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    key='excel-download'
+                )
+
+                # PDF Export
+                stats_dict = {
+                    'msg_count': msg_count,
+                    'user_count': len(filtered_df['User'].unique()),
+                    'days': filtered_df['Date'].nunique(),
+                    'media_cnt': media_cnt,
+                    'word_count': word_count,
+                    'links_cnt': links_cnt,
+                    'user_counts': filtered_df['User'].value_counts(),
+                    'sentiment_counts': sentiment_counts if 'sentiment' in filtered_df.columns else None,
+                }
+
+                try:
+                    pdf_bytes = pdf_exporter.generate_report_pdf(
+                        filtered_df,
+                        "WhatsApp Chat Analysis",
+                        selected_user,
+                        stats_dict
+                    )
+
+                    st.download_button(
+                        label="📄 Download PDF",
+                        data=pdf_bytes,
+                        file_name=f"whatsapp_analysis_{selected_user}.pdf",
+                        mime="application/pdf",
+                        key="pdf-download"
+                    )
+                except Exception as e:
+                    st.error(f"Failed to generate PDF: {str(e)}")
+
                 # Basic statistics in cards
                 col1, col2, col3, col4 = st.columns(4)
                 
@@ -1206,6 +1264,8 @@ if file:
             st.success("Analysis complete! Explore the tabs to see insights about your WhatsApp chat.")
         else:
             st.info("Click the 'Analyze Chat' button to start the analysis.")
+
+        
 
 else:
     # Show welcome message and instructions
