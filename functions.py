@@ -16,7 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from textblob import TextBlob
 import nltk
 import os
-
+nltk.download('punkt')
 # Manually set NLTK data path
 nltk.data.path.append(r"C:\Users\asus\AppData\Roaming\nltk_data")
 
