@@ -17,13 +17,11 @@ import streamlit as st
 
 def perform_message_trend_prediction(df, prediction_days=30):
     """Predict future message trends using Facebook Prophet"""
-    # Prepare data for Prophet
+  
     message_counts = df.groupby(pd.Grouper(key='Date', freq='D')).size().reset_index(name='messages')
-    
-    # Rename columns to match Prophet requirements
+
     message_counts.columns = ['ds', 'y']
-    
-    # Create and train Prophet model
+
     m = Prophet(
         yearly_seasonality=True,
         weekly_seasonality=True,
@@ -33,42 +31,35 @@ def perform_message_trend_prediction(df, prediction_days=30):
     
     m.fit(message_counts)
     
-    # Create future dataframe for prediction
     future = m.make_future_dataframe(periods=prediction_days)
-    
-    # Make predictions
+
     forecast = m.predict(future)
-    
-    # Create forecast plot
+
     fig = m.plot(forecast)
     plt.title('Message Frequency Forecast')
     plt.xlabel('Date')
     plt.ylabel('Number of Messages')
-    
-    # Add confidence interval legend
+
     plt.plot([], [], 'b-', label='Actual')
     plt.plot([], [], 'r-', label='Predicted')
     plt.fill_between([], [], [], color='#0072B2', alpha=0.2, label='Confidence Interval')
     plt.legend()
     
-    # Create components plot (trends, weekly patterns)
     components_fig = m.plot_components(forecast)
     
     return fig, components_fig, forecast
 
 def user_engagement_analysis(df):
     """Analyze user engagement patterns"""
-    # Create user engagement metrics
+
     user_engagement = df.groupby('User').agg({
         'Message': 'count',
         'message_length': ['mean', 'max', 'min', 'std'],
-        'Date': pd.Series.nunique  # number of days active
+        'Date': pd.Series.nunique  
     }).reset_index()
     
-    # Flatten multi-level column names
     user_engagement.columns = ['_'.join(col).strip('_') for col in user_engagement.columns.values]
     
-    # Rename columns for clarity
     user_engagement = user_engagement.rename(columns={
         'User_': 'User',
         'Message_count': 'message_count',
@@ -78,22 +69,17 @@ def user_engagement_analysis(df):
         'message_length_std': 'std_message_length',
         'Date_nunique': 'days_active'
     })
-    
-    # Calculate messages per day active
+ 
     user_engagement['msgs_per_day'] = user_engagement['message_count'] / user_engagement['days_active']
     
-    # Calculate total days in chat (from first to last message)
     total_days = (df['Date'].max() - df['Date'].min()).days + 1
-    
-    # Calculate participation rate (days active / total days)
+ 
     user_engagement['participation_rate'] = user_engagement['days_active'] / total_days
-    
-    # Calculate z-scores for key metrics to identify outliers
+
     metrics = ['message_count', 'avg_message_length', 'msgs_per_day']
     for metric in metrics:
         user_engagement[f'{metric}_zscore'] = (user_engagement[metric] - user_engagement[metric].mean()) / user_engagement[metric].std()
     
-    # Identify highly engaged users (high in messages and participation)
     user_engagement['engagement_score'] = (
         (user_engagement['message_count_zscore'] + 
          user_engagement['participation_rate'] * 2) / 3
@@ -104,7 +90,7 @@ def user_engagement_analysis(df):
 
 def conversation_topic_classifier(df, n_topics=5):
     """Classify conversations into topics using TF-IDF and clustering"""
-    # Get messages longer than 10 characters to avoid noise
+
     long_messages = df[df['Message'].str.len() > 10]
     
     if len(long_messages) < 10:  # Not enough data
